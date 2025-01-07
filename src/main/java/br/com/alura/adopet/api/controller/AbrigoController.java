@@ -1,8 +1,10 @@
 package br.com.alura.adopet.api.controller;
 
+import br.com.alura.adopet.api.exception.ValidacaoException;
 import br.com.alura.adopet.api.model.Abrigo;
 import br.com.alura.adopet.api.model.Pet;
 import br.com.alura.adopet.api.repository.AbrigoRepository;
+import br.com.alura.adopet.api.service.AbrigoService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,44 +19,30 @@ import java.util.List;
 public class AbrigoController {
 
     @Autowired
-    private AbrigoRepository repository;
+    private AbrigoService abrigoService;
+
 
     @GetMapping
     public ResponseEntity<List<Abrigo>> listar() {
-        return ResponseEntity.ok(repository.findAll());
+        var abrigoLista = this.abrigoService.listar();
+
+        return ResponseEntity.ok(abrigoLista);
     }
 
     @PostMapping
     @Transactional
     public ResponseEntity<String> cadastrar(@RequestBody @Valid Abrigo abrigo) {
-        boolean nomeJaCadastrado = repository.existsByNome(abrigo.getNome());
-        boolean telefoneJaCadastrado = repository.existsByTelefone(abrigo.getTelefone());
-        boolean emailJaCadastrado = repository.existsByEmail(abrigo.getEmail());
-
-        if (nomeJaCadastrado || telefoneJaCadastrado || emailJaCadastrado) {
-            return ResponseEntity.badRequest().body("Dados já cadastrados para outro abrigo!");
-        } else {
-            repository.save(abrigo);
+        try {
+            this.abrigoService.cadastrar(abrigo);
             return ResponseEntity.ok().build();
+        }catch (ValidacaoException e){
+            return ResponseEntity.badRequest().body(e.getMessage());
         }
     }
 
     @GetMapping("/{idOuNome}/pets")
     public ResponseEntity<List<Pet>> listarPets(@PathVariable String idOuNome) {
-        try {
-            Long id = Long.parseLong(idOuNome);
-            List<Pet> pets = repository.getReferenceById(id).getPets();
-            return ResponseEntity.ok(pets);
-        } catch (EntityNotFoundException enfe) {
-            return ResponseEntity.notFound().build();
-        } catch (NumberFormatException e) {
-            try {
-                List<Pet> pets = repository.findByNome(idOuNome).getPets();
-                return ResponseEntity.ok(pets);
-            } catch (EntityNotFoundException enfe) {
-                return ResponseEntity.notFound().build();
-            }
-        }
+
     }
 
     @PostMapping("/{idOuNome}/pets")
